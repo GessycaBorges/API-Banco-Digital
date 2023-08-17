@@ -1,4 +1,4 @@
-module.exports = {
+const bancoCubos = {
     banco: {
         nome: 'Cubos Bank',
         numero: '123',
@@ -9,4 +9,11 @@ module.exports = {
     saques: [],
     depositos: [],
     transferencias: []
-}
+};
+
+let identificadorDeContas = 1;
+
+module.exports = {
+    bancoCubos,
+    identificadorDeContas
+};
