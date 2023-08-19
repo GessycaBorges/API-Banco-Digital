@@ -286,6 +286,51 @@ const consultarSaldo = (req, res) => {
 }
 
 //Emitir extrato bancário
+const extrato = (req, res) => {
+    //Verificar se o numero da conta e a senha foram informadas (passado como query params na url)
+    const { numero_conta, senha } = req.query;
+
+    if (!numero_conta || !senha){
+        return res.status(404).json({ "mensagem": "O número da conta e a senha são obrigatórios!" });
+    }
+
+    //Verificar se a conta bancária informada existe
+    const contaProcurada = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta);
+    });
+
+    if (!contaProcurada){
+        return res.status(404).json({ "mensagem": "Conta bancária não encontada!" });
+    }
+
+    //Verificar se a senha informada é uma senha válida
+    if (senha !== contaProcurada.usuario.senha){
+        return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
+    }
+
+    //Retornar a lista de transferências, depósitos e saques da conta em questão.
+    const depositos = bancoCubos.depositos.filter ((deposito) => {
+        return deposito.numero_conta === numero_conta;
+    });
+    const saques = bancoCubos.saques.filter ((saque) => {
+        return saque.numero_conta === numero_conta;
+    });
+    const trasferenciasEnviadas = bancoCubos.transferencias.filter ((transferencia) => {
+        return transferencia.numero_conta_origem === numero_conta;
+    });
+    const trasferenciasRecebidas = bancoCubos.transferencias.filter ((transferencia) => {
+        return transferencia.numero_conta_destino === numero_conta;
+    });
+
+    const extrato ={
+        depositos,
+        saques,
+        trasferenciasEnviadas,
+        trasferenciasRecebidas
+    }
+    console.log(extrato)
+    return res.status(200).json(extrato);
+}
 
 module.exports = {
     listarContas,
@@ -295,5 +340,6 @@ module.exports = {
     depositar,
     sacar,
     transferir,
-    consultarSaldo
+    consultarSaldo,
+    extrato
 }
