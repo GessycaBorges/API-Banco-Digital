@@ -14,5 +14,6 @@ rotas.delete("/contas/:numeroConta", controladores.excluirConta);
 rotas.post("/transacoes/depositar", controladores.depositar);
 rotas.post("/transacoes/sacar", controladores.sacar);
 rotas.post("/transacoes/transferir", controladores.transferir);
+rotas.get("/contas/saldo", controladores.consultarSaldo);
 
 module.exports = rotas;

@@ -135,6 +135,10 @@ const depositar = (req,res) =>{
         return conta.numero === Number(numero_conta);
     });
 
+    if (!contaProcurada){
+        return res.status(404).json({ "mensagem": "Conta inválida!" });
+    }
+
     //Não permitir depósitos com valores negativos ou zerados
     if (valor <= 0){
         return res.status(404).json({ "mensagem": "O valor não pode ser menor que zero!" });
@@ -167,6 +171,10 @@ const sacar = (req, res) => {
     const contaProcurada = bancoCubos.contas.find ((conta) => {
         return conta.numero === Number(numero_conta);
     });
+
+    if (!contaProcurada){
+        return res.status(404).json({ "mensagem": "Conta inválida!" });
+    }
 
     //Verificar se a senha informada é uma senha válida para a conta informada
     const senhaProcurada = bancoCubos.contas.find ((conta) => {
@@ -209,11 +217,18 @@ const transferir = (req, res) => {
     const contaDeOrigem = bancoCubos.contas.find ((conta) => {
         return conta.numero === Number(numero_conta_origem);
     });
+    if (!contaDeOrigem){
+        return res.status(404).json({ "mensagem": "Conta de origem inválida!" });
+    }
 
     //Verificar se a conta bancária de destino informada existe
     const contaDeDestino = bancoCubos.contas.find ((conta) => {
         return conta.numero === Number(numero_conta_destino);
     });
+
+    if (!contaDeDestino){
+        return res.status(404).json({ "mensagem": "Conta de destino inválida!" });
+    }
 
     //Verificar se a senha informada é uma senha válida para a conta de origem informada
     if (senha !== contaDeOrigem.usuario.senha){
@@ -231,10 +246,45 @@ const transferir = (req, res) => {
     //Somar o valor da transferência no saldo da conta de destino
     contaDeDestino.saldo += valor;
 
+    //Registrar transferência
+    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    bancoCubos.transferencias.push({
+        data,
+        numero_conta_origem,
+        numero_conta_destino,
+        valor
+    });
+    
     return res.status(200).json();
 }
 
 //Consultar saldo da conta bancária
+const consultarSaldo = (req, res) => {
+    //Verificar se o numero da conta e a senha foram informadas (passado como query params na url)
+    const { numero_conta, senha } = req.query;
+
+    if (!numero_conta || !senha){
+        return res.status(404).json({ "mensagem": "O número da conta e a senha são obrigatórios!" });
+    }
+
+    //Verificar se a conta bancária informada existe
+    const contaProcurada = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta);
+    });
+
+    if (!contaProcurada){
+        return res.status(404).json({ "mensagem": "Conta bancária não encontada!" });
+    }
+
+    //Verificar se a senha informada é uma senha válida
+    if (senha !== contaProcurada.usuario.senha){
+        return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
+    }
+
+    //Exibir o saldo da conta bancária em questão
+    return res.status(200).json( { saldo: contaProcurada.saldo});
+}
+
 //Emitir extrato bancário
 
 module.exports = {
@@ -244,5 +294,6 @@ module.exports = {
     excluirConta,
     depositar,
     sacar,
-    transferir
+    transferir,
+    consultarSaldo
 }
