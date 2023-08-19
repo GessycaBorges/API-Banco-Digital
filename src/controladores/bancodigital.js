@@ -1,4 +1,5 @@
 let { bancoCubos, identificadorDeContas } = require("../bancodedados");
+const { format } = require("date-fns");
 
 //Listar contas bancárias
 const listarContas = (req, res) => {
@@ -121,7 +122,80 @@ const excluirConta = (req,res) => {
 }
 
 //Depósitar em uma conta bancária
+const depositar = (req,res) =>{
+    const { numero_conta, valor } = req.body;
+
+    //Verificar se o numero da conta e o valor do deposito foram informados no body
+    if (!numero_conta || !valor){
+        return res.status(404).json({ "mensagem": "O número da conta e o valor são obrigatórios!" });
+    }
+
+    //Verificar se a conta bancária informada existe
+    const contaProcurada = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta);
+    });
+
+    //Não permitir depósitos com valores negativos ou zerados
+    if (valor <= 0){
+        return res.status(404).json({ "mensagem": "O valor não pode ser menor que zero!" });
+    }
+
+    //Somar o valor de depósito ao saldo da conta encontrada
+    contaProcurada.saldo += valor;
+    
+    //Registrar depósito
+    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    bancoCubos.depositos.push({
+        data,
+        numero_conta,
+        valor
+    });
+
+    return res.status(200).json();
+}
+
 //Sacar de uma conta bancária
+const sacar = (req, res) => {
+    //Verificar se o numero da conta, o valor do saque e a senha foram informados no body
+    const { numero_conta, valor, senha} = req.body;
+
+    if (!numero_conta || !valor || !senha){
+        return res.status(404).json({ "mensagem": "O número da conta, o valor e a senha são obrigatórios!" });
+    }
+
+    //Verificar se a conta bancária informada existe
+    const contaProcurada = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta);
+    });
+
+    //Verificar se a senha informada é uma senha válida para a conta informada
+    const senhaProcurada = bancoCubos.contas.find ((conta) => {
+        return conta.usuario.senha === senha;
+    });
+
+    if (!senhaProcurada){
+        return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
+    }
+
+    //Verificar se há saldo disponível para saque
+    if (contaProcurada.saldo < valor){
+        return res.status(404).json({ "mensagem": "Saldo insuficiente!" });
+    }
+
+    //Subtrair o valor sacado do saldo da conta encontrada
+    contaProcurada.saldo -= valor;
+
+    //Registrar saque
+    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+    bancoCubos.saques.push({
+        data,
+        numero_conta,
+        valor
+    });
+
+    return res.status(200).json();
+}
+
 //Transferir valores entre contas bancárias
 //Consultar saldo da conta bancária
 //Emitir extrato bancário
@@ -130,5 +204,7 @@ module.exports = {
     listarContas,
     criarConta,
     atualizarConta,
-    excluirConta
+    excluirConta,
+    depositar,
+    sacar
 }

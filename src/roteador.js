@@ -8,8 +8,10 @@ const rotas = express();
 rotas.use(express.json());
 
 rotas.get("/contas", validarSenha, controladores.listarContas);
-rotas.post("/contas", validarSenha, controladores.criarConta);
-rotas.put("/contas/:numeroConta/usuario", validarSenha, controladores.atualizarConta);
-rotas.delete("/contas/:numeroConta", validarSenha, controladores.excluirConta);
+rotas.post("/contas", controladores.criarConta);
+rotas.put("/contas/:numeroConta/usuario", controladores.atualizarConta);
+rotas.delete("/contas/:numeroConta", controladores.excluirConta);
+rotas.post("/transacoes/depositar", controladores.depositar);
+rotas.post("/transacoes/sacar", controladores.sacar);
 
 module.exports = rotas;
