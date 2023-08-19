@@ -1,36 +1,28 @@
 let { bancoCubos, identificadorDeContas } = require("../bancodedados");
-const { format } = require("date-fns");
+const { dadoProcuradoUsuario, procurarConta, data, filtrarDados } = require("../funcoesAuxiliares");
 
-//Listar contas bancárias
+//--------------- LISTAR CONTAS BANCÁRIAS ---------------
 const listarContas = (req, res) => {
     return res.status(200).json(bancoCubos.contas);
 };
 
-//Criar conta bancária
+//--------------- CRIAR CONTAS BANCÁRIAS ---------------
 const criarConta = (req, res) => {
     const { nome, cpf, data_nascimento, telefone, email, senha } = req.body;
     
-    // Verificar se todos os campos foram informados (todos são obrigatórios)
+    // Todos os campos são obrigatórios
     if (!nome || !cpf || !data_nascimento || !telefone || !email || !senha){
-        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados" });
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
     }
 
-    // CPF deve ser um campo único
-    const cpfProcurado = bancoCubos.contas.find ((conta) => {
-        return conta.usuario.cpf === cpf;
-    });
-
-    // E-mail deve ser um campo único
-    const emailProcurado = bancoCubos.contas.find ((conta) => {
-        return conta.usuario.email === email;
-    });
-
+    // CPF e email devem ser um campo único
+    const cpfProcurado = dadoProcuradoUsuario(bancoCubos.contas, "cpf", cpf);
+    const emailProcurado = dadoProcuradoUsuario(bancoCubos.contas, "email", email);
     if (cpfProcurado || emailProcurado) {
-        return res.status(404).json({ "mensagem": "Já existe uma conta com o cpf ou e-mail informado!" })
+        return res.status(404).json({ "mensagem": "Já existe uma conta com o cpf ou e-mail informado!" });
     };
     
-    // Criar uma nova conta cujo número é único
-    // Definir o saldo inicial da conta como 0
+    // Criar uma nova conta
     const contaCliente = {
         numero: identificadorDeContas++,
         saldo: 0,
@@ -42,45 +34,35 @@ const criarConta = (req, res) => {
             email,
             senha
         }
-    }
+    };
 
     bancoCubos.contas.push(contaCliente);
     
-    return res.status(200).json();
+    return res.status(204).json();
 };
 
-//Atualizar os dados do usuário da conta bancária
-const atualizarConta = (req,res) => {
+//--------------- ATUALIZAR DADOS ---------------
+const atualizarConta = (req, res) => {
     const { nome, cpf, data_nascimento, telefone, email, senha } = req.body;
     const { numeroConta } = req.params;
 
-    //Verificar se foi passado todos os campos no body da requisição
+    // Todos os campos são obrigatórios
     if (!nome || !cpf || !data_nascimento || !telefone || !email || !senha){
-        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
-    //Verificar se o numero da conta passado como parametro na URL é válida
-    const contaProcurada = bancoCubos.contas.find((conta) => {
-        return conta.numero === Number(numeroConta);
-    });
+    //Verificar se o numero da conta é válido
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numeroConta);
+    if (!contaProcurada){
+        return res.status(404).json({ "mensagem": "O número da conta informado não existe!" });
+    };
 
-    //Se o CPF for informado, verificar se já existe outro registro com o mesmo CPF
-    const cpfProcurado = bancoCubos.contas.find ((conta) => {
-        return conta.usuario.cpf === cpf;
-    });
-    
-    //Se o E-mail for informado, verificar se já existe outro registro com o mesmo E-mail
-    const emailProcurado = bancoCubos.contas.find ((conta) => {
-        return conta.usuario.email === email;
-    });
-
+    //Verificar se já existe CPF ou email
+    const cpfProcurado = dadoProcuradoUsuario(bancoCubos.contas, "cpf", cpf);
+    const emailProcurado = dadoProcuradoUsuario(bancoCubos.contas, "email", email);
     if (cpfProcurado || emailProcurado) {
         return res.status(404).json({ "mensagem": "Já existe cadastro com o cpf ou e-mail informado!" });
     };
-
-    if (!contaProcurada){
-        return res.status(404).json({ "mensagem": "O número da conta informado não existe" })
-    }
 
     //Atualizar os dados do usuário de uma conta bancária
     contaProcurada.usuario = {
@@ -90,164 +72,142 @@ const atualizarConta = (req,res) => {
         telefone,
         email,
         senha
-    }
+    };
 
-    return res.status(200).json();
-}
+    return res.status(204).json();
+};
 
-//Excluir uma conta bancária
+//--------------- EXCLUIR CONTA ---------------
 const excluirConta = (req,res) => {
     const { numeroConta } = req.params;
 
-    //Verificar se o numero da conta passado como parametro na URL é válido
-    const contaProcurada = bancoCubos.contas.find((conta) => {
-        return conta.numero === Number(numeroConta);
-    });
-
+    //Verificar se o numero da conta é válido
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numeroConta);
     if (!contaProcurada){
-        return res.status(404).json({ "mensagem": "O número da conta informado não existe" });
+        return res.status(404).json({ "mensagem": "O número da conta informado não existe!" });
     };
     
-    //Permitir excluir uma conta bancária apenas se o saldo for 0 (zero)
+    //Permitir excluir apenas se o saldo for 0 (zero)
     if (contaProcurada.saldo !== 0) {
         return res.status(404).json({ "mensagem": "A conta só pode ser removida se o saldo for zero!" });
     }
 
-    //Remover a conta do objeto de persistência de dados.
+    //Remover a conta
     bancoCubos.contas = bancoCubos.contas.filter((conta) => {
         return conta !== contaProcurada;
     })
 
-    return res.status(200).json();
-}
+    return res.status(204).json();
+};
 
-//Depósitar em uma conta bancária
+//--------------- DEPOSITAR ---------------
 const depositar = (req,res) =>{
     const { numero_conta, valor } = req.body;
 
-    //Verificar se o numero da conta e o valor do deposito foram informados no body
+    //Verificar se os dados foram informados no body
     if (!numero_conta || !valor){
-        return res.status(404).json({ "mensagem": "O número da conta e o valor são obrigatórios!" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
     //Verificar se a conta bancária informada existe
-    const contaProcurada = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta);
-    });
-
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numero_conta);
     if (!contaProcurada){
         return res.status(404).json({ "mensagem": "Conta inválida!" });
-    }
+    };
 
     //Não permitir depósitos com valores negativos ou zerados
     if (valor <= 0){
         return res.status(404).json({ "mensagem": "O valor não pode ser menor que zero!" });
-    }
+    };
 
     //Somar o valor de depósito ao saldo da conta encontrada
     contaProcurada.saldo += valor;
     
     //Registrar depósito
-    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
     bancoCubos.depositos.push({
         data,
         numero_conta,
         valor
     });
 
-    return res.status(200).json();
-}
+    return res.status(204).json();
+};
 
-//Sacar de uma conta bancária
+//--------------- SACAR ---------------
 const sacar = (req, res) => {
-    //Verificar se o numero da conta, o valor do saque e a senha foram informados no body
     const { numero_conta, valor, senha} = req.body;
-
+    
+    //Verificar se os dados foram informados no body
     if (!numero_conta || !valor || !senha){
-        return res.status(404).json({ "mensagem": "O número da conta, o valor e a senha são obrigatórios!" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
-    //Verificar se a conta bancária informada existe
-    const contaProcurada = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta);
-    });
-
+    //Verificar se a conta existe
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numero_conta);
     if (!contaProcurada){
         return res.status(404).json({ "mensagem": "Conta inválida!" });
-    }
+    };
 
-    //Verificar se a senha informada é uma senha válida para a conta informada
-    const senhaProcurada = bancoCubos.contas.find ((conta) => {
-        return conta.usuario.senha === senha;
-    });
-
+    //Verificar se a senha informada é válida
+    const senhaProcurada = dadoProcuradoUsuario(bancoCubos.contas, "senha", senha);
     if (!senhaProcurada){
         return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
-    }
+    };
 
     //Verificar se há saldo disponível para saque
     if (contaProcurada.saldo < valor){
         return res.status(404).json({ "mensagem": "Saldo insuficiente!" });
-    }
+    };
 
     //Subtrair o valor sacado do saldo da conta encontrada
     contaProcurada.saldo -= valor;
 
     //Registrar saque
-    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
     bancoCubos.saques.push({
         data,
         numero_conta,
         valor
     });
 
-    return res.status(200).json();
-}
+    return res.status(204).json();
+};
 
-//Transferir valores entre contas bancárias
+//--------------- TRASFERIR ---------------
 const transferir = (req, res) => {
-    //Verificar se o número da conta de origem, de destino, senha da conta de origem e valor da transferência foram informados no body
     const { numero_conta_origem, numero_conta_destino, valor, senha} = req.body;
-
+    
+    //Verificar se os dados foram informados no body
     if (!numero_conta_origem || !numero_conta_destino || !valor || !senha){
-        return res.status(404).json({ "mensagem": "O número das contas de origem e de destino, o valor e a senha são obrigatórios!" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
-    //Verificar se a conta bancária de origem informada existe
-    const contaDeOrigem = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta_origem);
-    });
-    if (!contaDeOrigem){
+    //Verificar se a conta bancária de origem existe
+    const contaDeOrigem = procurarConta (bancoCubos.contas, "numero", numero_conta_origem);
+        if (!contaDeOrigem){
         return res.status(404).json({ "mensagem": "Conta de origem inválida!" });
-    }
+    };
 
-    //Verificar se a conta bancária de destino informada existe
-    const contaDeDestino = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta_destino);
-    });
-
+    //Verificar se a conta bancária de destino existe
+    const contaDeDestino = procurarConta (bancoCubos.contas, "numero", numero_conta_destino);
     if (!contaDeDestino){
         return res.status(404).json({ "mensagem": "Conta de destino inválida!" });
-    }
+    };
 
-    //Verificar se a senha informada é uma senha válida para a conta de origem informada
+    //Verificar se a senha informada é válida para a conta de origem
     if (senha !== contaDeOrigem.usuario.senha){
         return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
-    }
+    };
     
-    //Verificar se há saldo disponível na conta de origem para a transferência
+    //Verificar se há saldo disponível na conta de origem
     if (contaDeOrigem.saldo < valor){
         return res.status(404).json({ "mensagem": "Saldo insuficiente!" });
-    }
+    };
 
-    //Subtrair o valor da transfência do saldo na conta de origem
+    //Subtrair o valor na conta de origem e somar o valor na conta de destino
     contaDeOrigem.saldo -= valor;
-
-    //Somar o valor da transferência no saldo da conta de destino
     contaDeDestino.saldo += valor;
 
     //Registrar transferência
-    const data = format(new Date(), "yyyy-MM-dd HH:mm:ss");
     bancoCubos.transferencias.push({
         data,
         numero_conta_origem,
@@ -255,82 +215,68 @@ const transferir = (req, res) => {
         valor
     });
     
-    return res.status(200).json();
-}
+    return res.status(204).json();
+};
 
-//Consultar saldo da conta bancária
+//--------------- CONSULTAR SALDO ---------------
 const consultarSaldo = (req, res) => {
-    //Verificar se o numero da conta e a senha foram informadas (passado como query params na url)
     const { numero_conta, senha } = req.query;
-
+    
+    //Verificar se os dados foram informados
     if (!numero_conta || !senha){
-        return res.status(404).json({ "mensagem": "O número da conta e a senha são obrigatórios!" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
     //Verificar se a conta bancária informada existe
-    const contaProcurada = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta);
-    });
-
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numero_conta);
     if (!contaProcurada){
         return res.status(404).json({ "mensagem": "Conta bancária não encontada!" });
-    }
+    };
 
-    //Verificar se a senha informada é uma senha válida
+    //Verificar se a senha informada é válida
     if (senha !== contaProcurada.usuario.senha){
         return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
-    }
+    };
 
     //Exibir o saldo da conta bancária em questão
     return res.status(200).json( { saldo: contaProcurada.saldo});
-}
+};
 
-//Emitir extrato bancário
+//--------------- EMITIR EXTRATO ---------------
 const extrato = (req, res) => {
-    //Verificar se o numero da conta e a senha foram informadas (passado como query params na url)
     const { numero_conta, senha } = req.query;
-
+    
+    //Verificar se os dados foram informados
     if (!numero_conta || !senha){
-        return res.status(404).json({ "mensagem": "O número da conta e a senha são obrigatórios!" });
-    }
+        return res.status(404).json({ "mensagem": "Todos os dados precisam ser informados!" });
+    };
 
     //Verificar se a conta bancária informada existe
-    const contaProcurada = bancoCubos.contas.find ((conta) => {
-        return conta.numero === Number(numero_conta);
-    });
-
+    const contaProcurada = procurarConta (bancoCubos.contas, "numero", numero_conta);
     if (!contaProcurada){
         return res.status(404).json({ "mensagem": "Conta bancária não encontada!" });
-    }
+    };
 
-    //Verificar se a senha informada é uma senha válida
+    //Verificar se a senha informada é válida
     if (senha !== contaProcurada.usuario.senha){
         return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
-    }
+    };
 
-    //Retornar a lista de transferências, depósitos e saques da conta em questão.
-    const depositos = bancoCubos.depositos.filter ((deposito) => {
-        return deposito.numero_conta === numero_conta;
-    });
-    const saques = bancoCubos.saques.filter ((saque) => {
-        return saque.numero_conta === numero_conta;
-    });
-    const trasferenciasEnviadas = bancoCubos.transferencias.filter ((transferencia) => {
-        return transferencia.numero_conta_origem === numero_conta;
-    });
-    const trasferenciasRecebidas = bancoCubos.transferencias.filter ((transferencia) => {
-        return transferencia.numero_conta_destino === numero_conta;
-    });
+    //Retornar a lista de transferências, depósitos e saques
+    const depositos = filtrarDados(bancoCubos.depositos, "numero_conta", numero_conta);
+    const saques = filtrarDados(bancoCubos.saques, "numero_conta", numero_conta);
+    const trasferenciasEnviadas = filtrarDados(bancoCubos.transferencias, "numero_conta_origem", numero_conta);
+    const trasferenciasRecebidas = filtrarDados(bancoCubos.transferencias, "numero_conta_destino", numero_conta);
 
     const extrato ={
         depositos,
         saques,
         trasferenciasEnviadas,
         trasferenciasRecebidas
-    }
-    console.log(extrato)
+    };
+
     return res.status(200).json(extrato);
-}
+};
 
 module.exports = {
     listarContas,
