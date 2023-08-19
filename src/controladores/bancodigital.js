@@ -197,6 +197,43 @@ const sacar = (req, res) => {
 }
 
 //Transferir valores entre contas bancárias
+const transferir = (req, res) => {
+    //Verificar se o número da conta de origem, de destino, senha da conta de origem e valor da transferência foram informados no body
+    const { numero_conta_origem, numero_conta_destino, valor, senha} = req.body;
+
+    if (!numero_conta_origem || !numero_conta_destino || !valor || !senha){
+        return res.status(404).json({ "mensagem": "O número das contas de origem e de destino, o valor e a senha são obrigatórios!" });
+    }
+
+    //Verificar se a conta bancária de origem informada existe
+    const contaDeOrigem = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta_origem);
+    });
+
+    //Verificar se a conta bancária de destino informada existe
+    const contaDeDestino = bancoCubos.contas.find ((conta) => {
+        return conta.numero === Number(numero_conta_destino);
+    });
+
+    //Verificar se a senha informada é uma senha válida para a conta de origem informada
+    if (senha !== contaDeOrigem.usuario.senha){
+        return res.status(404).json({ "mensagem": "A senha informada é inválida!" });
+    }
+    
+    //Verificar se há saldo disponível na conta de origem para a transferência
+    if (contaDeOrigem.saldo < valor){
+        return res.status(404).json({ "mensagem": "Saldo insuficiente!" });
+    }
+
+    //Subtrair o valor da transfência do saldo na conta de origem
+    contaDeOrigem.saldo -= valor;
+
+    //Somar o valor da transferência no saldo da conta de destino
+    contaDeDestino.saldo += valor;
+
+    return res.status(200).json();
+}
+
 //Consultar saldo da conta bancária
 //Emitir extrato bancário
 
@@ -206,5 +243,6 @@ module.exports = {
     atualizarConta,
     excluirConta,
     depositar,
-    sacar
+    sacar,
+    transferir
 }
