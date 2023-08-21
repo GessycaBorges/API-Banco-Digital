@@ -58,8 +58,12 @@ const atualizarConta = (req, res) => {
     };
 
     //Verificar se já existe CPF ou email
-    const cpfProcurado = dadoProcuradoUsuario(bancoCubos.contas, "cpf", cpf);
-    const emailProcurado = dadoProcuradoUsuario(bancoCubos.contas, "email", email);
+    const demaisContas = bancoCubos.contas.filter((conta) => {
+        return conta.numero !== Number(numeroConta);
+    });
+
+    const cpfProcurado = dadoProcuradoUsuario(demaisContas, "cpf", cpf);
+    const emailProcurado = dadoProcuradoUsuario(demaisContas, "email", email);
     if (cpfProcurado || emailProcurado) {
         return res.status(404).json({ "mensagem": "Já existe cadastro com o cpf ou e-mail informado!" });
     };
